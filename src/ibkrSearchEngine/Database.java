@@ -1,112 +1,183 @@
 import java.util.*;
 
 class Database {
-  private Map<String, Attribute> adhar_hashMap;
-  private Map<String, LinkedList<Attribute>> user_name_hashMap;
-  private Map<String, LinkedList<Attribute>> user_email_hashMap;
-  private TreeMap<String, LinkedList<Attribute>> age_treeMap;
-  private Map<String, LinkedList<Attribute>> country_hashMap;
+
+  private Map<String, Map<String, List<AbstractMap<Object, LinkedList<Attribute>>>>> table;
 
   {
-    this.adhar_hashMap = new HashMap<>();
-    this.country_hashMap = new HashMap<>();
-    this.user_email_hashMap = new HashMap<>();
-    this.age_treeMap = new TreeMap<>();
-    this.user_name_hashMap = new HashMap<>();
+    this.table = new HashMap<>();
   }
+  DataParser dataParser;
 
   Database() {
-    DataJson data = new DataJson();
-    this.initialiseDatabase(data.getData());
+    this.dataParser = new DataParser();
+
   }
 
-  private void initialiseDatabase(String input) {
+  public void createTable(String tableName) {
+    this.table.put(tableName, new HashMap<>());
+  }
 
-    String[] users = input.trim().split("\\r?\\n");
-    // System.out.println(users);
-
-    LinkedList<Attribute> userListByName;
-    LinkedList<Attribute> userListByAge;
-    LinkedList<Attribute> userListByCountry;
-
-    String[] temp = new String[2];
-
-    for (String u : users) {
-      // System.out.println(u);
-
-      String[] input_split = u.trim().split(",");
-      ArrayList<String> arr = new ArrayList<>();
-      for (String str : input_split) {
-        // System.out.println(str);
-        temp = str.split(":");
-
-        arr.add(temp[1].replaceAll("\'", ""));
+  public void initializeDatabase(String tableName) {
+    if (!this.table.containsKey(tableName)) {
+      this.createTable(tableName);
+    }
+    String input = this.dataParser.getData();
+    String dataStore[] = input.trim().split("\n");
+    for (String data : dataStore) {
+      String columns[] = data.split(",");
+      HashMap<String, String> attr = new HashMap<>();
+      Attribute myAttr = new Attribute();
+      for (String column : columns) {
+        String attributes[] = column.trim().split(":");
+        attributes[1] = attributes[1].trim().replaceAll("'", "");
+        attr.put(attributes[0].trim(), attributes[1]);
+        if (checkIfNumber(attributes[1])) {
+          insertIntoTreeHelper(this.table.get(tableName), attributes[0], Integer.parseInt(attributes[1]), myAttr);
+        } else {
+          insertIntoTreeHelper(this.table.get(tableName), attributes[0], attributes[1], myAttr);
+        }
       }
-      // object creation
-      Attribute obj = new Attribute(arr.get(0), arr.get(1), arr.get(2), arr.get(3), arr.get(4));
-      arr.clear();
+      myAttr.setMap(attr);
+    }
 
-      adhar_hashMap.put(obj.getadhar_id(), obj);
-      LinkedList<Attribute> email_ll = new LinkedList<Attribute>();
-      email_ll.add(obj);
-      user_email_hashMap.put(obj.getuser_email(), email_ll);
+  }
 
-      // user name hashmap
+  private int getLastInsertedId(HashMap<Integer, Attribute> map) {
+    if (map.size() == 0) {
+      return 0;
+    }
+    Integer[] keys = map.keySet().toArray(new Integer[0]);
+    return keys[keys.length - 1];
+  }
 
-      if (user_name_hashMap.containsKey(obj.getuser_name())) {
-        LinkedList<Attribute> tempList_user_name = user_name_hashMap.get(obj.getuser_name());
-        tempList_user_name.add(obj);
-        user_name_hashMap.put(obj.getuser_name().trim(), tempList_user_name);
-      } else {
-        LinkedList<Attribute> getUserNameLinkedList = new LinkedList<Attribute>();
-        getUserNameLinkedList.add(obj);
-        user_name_hashMap.put(obj.getuser_name().trim(), getUserNameLinkedList);
-      }
-
-      // user age hashmap
-
-      if (age_treeMap.containsKey(obj.getage())) {
-        LinkedList<Attribute> tempList_user_age = age_treeMap.get(obj.getage());
-        tempList_user_age.add(obj);
-        age_treeMap.put(obj.getage().trim(), tempList_user_age);
-      } else {
-        LinkedList<Attribute> getUserageLinkedList = new LinkedList<Attribute>();
-        getUserageLinkedList.add(obj);
-        age_treeMap.put(obj.getage().trim(), getUserageLinkedList);
-      }
-
-      // user country hashmap
-
-      if (country_hashMap.containsKey(obj.getcountry())) {
-        LinkedList<Attribute> tempList_user_country = country_hashMap.get(obj.getcountry());
-        tempList_user_country.add(obj);
-        country_hashMap.put(obj.getcountry().trim(), tempList_user_country);
-      } else {
-
-        LinkedList<Attribute> getUserNameLinkedList = new LinkedList<Attribute>();
-        getUserNameLinkedList.add(obj);
-        country_hashMap.put(obj.getcountry().trim(), getUserNameLinkedList);
-      }
+  private boolean checkIfNumber(String value) {
+    try {
+      int val = Integer.parseInt(value);
+      return true;
+    } catch (NumberFormatException e) {
+      return false;
     }
   }
 
-  public Map<String, Attribute> getAdharMap() {
-    return new HashMap<>(this.adhar_hashMap);
+  private void insertIntoTreeHelper(Map<String, List<AbstractMap<Object, LinkedList<Attribute>>>> table, String key,
+      Object innerKey, Attribute attr) {
+    if (!table.containsKey(key)) {
+      TreeMap<Object, LinkedList<Attribute>> treeMap = new TreeMap<Object, LinkedList<Attribute>>() {
+        {
+          put(innerKey, new LinkedList<Attribute>() {
+            {
+              add(attr);
+            }
+          });
+        }
+      };
+      HashMap<Object, LinkedList<Attribute>> hashMap = new HashMap<Object, LinkedList<Attribute>>() {
+        {
+          put(innerKey, new LinkedList<Attribute>() {
+            {
+              add(attr);
+            }
+          });
+        }
+      };
+      LinkedList<AbstractMap<Object, LinkedList<Attribute>>> list = new LinkedList<AbstractMap<Object, LinkedList<Attribute>>>() {
+        {
+          add(treeMap);
+          add(hashMap);
+        }
+      };
+      table.put(key, list);
+      return;
+    } else if (!table.get(key).get(0).containsKey(innerKey)) {
+      for (AbstractMap<Object, LinkedList<Attribute>> map : table.get(key)) {
+        map.put(innerKey, new LinkedList<Attribute>() {
+          {
+            add(attr);
+          }
+        });
+      }
+      return;
+    } else {
+      for (AbstractMap<Object, LinkedList<Attribute>> map : table.get(key)) {
+        map.get(innerKey).add(attr);
+      }
+
+    }
+    // else if (!table.get(key).get(0).get(innerKey).contains(attr)) {
+    // table.get(key).get(0).get(innerKey).add(attr);
+    // }
   }
 
-  public Map<String, LinkedList<Attribute>> getUserEmailMap() {
-    return new HashMap<>(this.user_email_hashMap);
+  public LinkedList<Attribute> getAttribute(String tableName, String condition) {
+    LinkedList<Attribute> result = new LinkedList<>();
+    String splitingCond = "";
+    if (condition.contains(">=")) {
+      splitingCond = ">=";
+    } else if (condition.contains("<=")) {
+      splitingCond = "<=";
+    } else if (condition.contains(">")) {
+      splitingCond = ">";
+    } else if (condition.contains("<")) {
+      splitingCond = "<";
+    } else if (condition.contains("=")) {
+      splitingCond = "=";
+    }
+    String condAttr[] = condition.split("[>=<]");
+    if (condAttr.length > 2) {
+      condAttr[1] = condAttr[condAttr.length - 1].replaceAll("[']", "").trim();
+    } else {
+      condAttr[1] = condAttr[1].replaceAll("[']", "").trim();
+    }
+    condAttr[0] = condAttr[0].trim();
+    Object key = condAttr[1];
+    if (checkIfNumber(condAttr[1])) {
+      key = Integer.parseInt(condAttr[1]);
+    }
+    Collection<LinkedList<Attribute>> temps;
+    switch (splitingCond) {
+
+    case ">=":
+      temps = ((TreeMap<Object, LinkedList<Attribute>>) this.table.get(tableName).get(condAttr[0].trim()).get(0))
+          .tailMap(key, true).values();
+      for (LinkedList<Attribute> temp : temps) {
+        result.addAll(temp);
+      }
+
+      break;
+    case "<=":
+      temps = ((TreeMap<Object, LinkedList<Attribute>>) this.table.get(tableName).get(condAttr[0].trim()).get(0))
+          .headMap(key, true).values();
+      for (LinkedList<Attribute> temp : temps) {
+        result.addAll(temp);
+      }
+      break;
+    case ">":
+      temps = ((TreeMap<Object, LinkedList<Attribute>>) this.table.get(tableName).get(condAttr[0].trim()).get(0))
+          .tailMap(key, false).values();
+      for (LinkedList<Attribute> temp : temps) {
+        result.addAll(temp);
+      }
+      break;
+    case "<":
+      temps = ((TreeMap<Object, LinkedList<Attribute>>) this.table.get(tableName).get(condAttr[0].trim()).get(0))
+          .headMap(key, false).values();
+      for (LinkedList<Attribute> temp : temps) {
+        result.addAll(temp);
+      }
+      break;
+    case "=":
+      return this.table.get(tableName).get(condAttr[0].trim()).get(1).get(key);
+
+    }
+    return result;
   }
 
-  public Map<String, LinkedList<Attribute>> getCountryMap() {
-    return new HashMap<>(this.country_hashMap);
+  public void printDatabase() {
+    System.out.println(this.table);
   }
 
-  public Map<String, LinkedList<Attribute>> getUserNameMap() {
-    return new HashMap<>(this.user_name_hashMap);
-  }
-
-  public TreeMap<String, LinkedList<Attribute>> getAgeMap() {
-    return new TreeMap<>(this.age_treeMap);
+  public void printTable(String tableName) {
+    System.out.println(this.table.containsKey(tableName) ? this.table.get(tableName) : "Table Not Defined");
   }
 }

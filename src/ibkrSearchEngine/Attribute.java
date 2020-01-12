@@ -1,42 +1,26 @@
 import java.util.*;
 
 class Attribute {
-  private String adhar_id;
-  private String user_name;
-  private String user_email;
-  private String age;
-  private String country;
+  private HashMap<String, String> map;
 
-  Attribute(String adhar_id, String user_name, String user_email, String age, String country) {
-    this.adhar_id = adhar_id;
-    this.user_name = user_name;
-    this.user_email = user_email;
-    this.age = age;
-    this.country = country;
+  Attribute() {
+    this.map = new HashMap<>();
+  }
+
+  public void setMap(HashMap<String, String> map) {
+    this.map = map;
   }
 
   @Override
   public String toString() {
-    return this.adhar_id + " " + this.user_name + " " + this.user_email + " " + this.age + " " + this.country;
+    return this.map.toString() + "\n";
   }
 
-  public String getadhar_id() {
-    return this.adhar_id;
+  public String get(String attr) {
+    return this.map.get((String) attr);
   }
 
-  public String getuser_name() {
-    return this.user_name;
-  }
-
-  public String getuser_email() {
-    return this.user_email;
-  }
-
-  public String getage() {
-    return this.age;
-  }
-
-  public String getcountry() {
-    return this.country;
+  public void add(String[] data) {
+    this.map.put((String) data[0], (String) data[1]);
   }
 }
